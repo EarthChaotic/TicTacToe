@@ -8,11 +8,8 @@
   </head>
   <body>
     <h1>Tic Tac Toe</h1>
-
     <label for="boardSize">Board Size: </label>
-
     <input type="number" id="boardSize" min="3" value="3" />
-
     <button onclick="startGame()">Start Game</button>
 
     <button onclick="resetGame()">Reset Game</button>
@@ -32,8 +29,10 @@
     <div id="board">
       <!-- Dynamic Board -->
     </div>
+    <label id="Winner">Test</label>
   </body>
 </html>
+<!-- Script -->
 <script>
   let boardSize;
   let moves = [];
@@ -44,17 +43,14 @@
   const boardSizeInput = document.getElementById("boardSize");
 
   function startGame() {
-    if (Gamemode.value === "PVE") {
-      boardSize = 3; //AI Glitches So Set Max To 3
-    } else {
-      boardSize = parseInt(boardSizeInput.value);
-    }
-
     currentPlayer = "X"; //Reset Player Every restart
+
+    boardSize = parseInt(boardSizeInput.value);
 
     board = Array.from({ length: boardSize }, () =>
       Array.from({ length: boardSize }, () => "")
     );
+
     moves = []; // Clear the moves history for a new game
     renderBoard();
 

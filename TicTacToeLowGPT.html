@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="layout.css" rel="stylesheet" type="text/css" />
+    <title>Tic Tac Toe</title>
+  </head>
+  <body>
+    <h1>Tic Tac Toe</h1>
+    <!-- Menu -->
+    <label for="BoardSize">Board Size : </label>
+    <input type="number" id="BoardSize" min="3" value="3" />
+    <button onclick="Start()">Start Game</button>
+    <br>
+    <button onclick="ReplayMenu()">Load Match History</button>
+    <select id="ReplayMenu"></select>
+    <button onclick="replayMatch(document.getElementById('ReplayMenu').value)">
+      Replay Match
+    </button>
+    <div id="ReplayBoard" class="replay-board"></div>
+    <p id="PlayerTurn"></p>
+    <!-- Menu -->
+
+    <div id="board">
+      <!-- Dynamic Board -->
+    </div>
+    <label id="WhoWin"></label>
+  </body>
+  <!-- Script -->
+  <script>
+    let currentPlayer;
+    let BoardSize;
+    let gameOver = false;
+    let Matches;
+    const boardContainer = document.getElementById("board");
+    const boardSizeInput = document.getElementById("BoardSize");
+
+    function Start() {
+      currentPlayer = "X"; //Player X Start
+      document.getElementById("PlayerTurn").textContent =
+        "Player " + currentPlayer + "'s Turn";
+      document.getElementById("WhoWin").textContent = "";
+      gameOver = false;
+      BoardSize = parseInt(boardSizeInput.value); //Parse Int BoardSize
+      board = Array.from({ length: BoardSize }, () =>
+        Array.from({ length: BoardSize }, () => "")
+      );
+
+      CreateBoard();
+    }
+
+    function CreateBoard() {
+      boardContainer.innerHTML = "";
+      boardContainer.style.gridTemplateColumns = `repeat(${BoardSize}, 1fr)`;
+
+      for (let row = 0; row < BoardSize; row++) {
+        //Create Row
+        for (let col = 0; col < BoardSize; col++) {
+          //Create Col in Each Row
+          const cell = document.createElement("div"); //Create new Div
+          cell.className = "cell"; //set all cell classname to cell
+          cell.dataset.row = row; //set row in current index
+          cell.dataset.col = col; //set col in current index
+          cell.addEventListener("click", MakeMove); //add MakeMove event in every Cell
+          cell.textContent = board[row][col]; //For XO to be store in that exact Cell
+          boardContainer.appendChild(cell); //set cell as boardContainer child
+        }
+      }
+    }
+
+    function MakeMove() {
+      if (gameOver) return;
+      const cell = event.target;
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+
+      if (board[row][col] == "") {
+        board[row][col] = currentPlayer;
+        cell.textContent = currentPlayer;
+
+        //Then Check win
+        if (CheckWin(row, col)) {
+          document.getElementById("WhoWin").textContent =
+            "Player " + currentPlayer + " Win!";
+          gameOver = true;
+          const matchData = {
+            board: board,
+            winner: currentPlayer,
+            moves: Matches,
+          };
+          fetch("api/match", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(matchData),
+          });
+          return;
+        } else if (CheckDraw()) {
+          document.getElementById("WhoWin").textContent = "It's a Draw!";
+          gameOver = true;
+          return;
+        } else {
+          currentPlayer = currentPlayer === "X" ? "O" : "X";
+          document.getElementById("PlayerTurn").textContent =
+            "Player " + currentPlayer + "'s Turn";
+        }
+      }
+    }
+
+    function CheckWin(row, col) {
+      const symbol = board[row][col];
+      let win = true;
+
+      //Check row
+      for (let i = 0; i < BoardSize; i++) {
+        if (board[row][i] !== symbol) {
+          win = false;
+          break;
+        }
+      }
+
+      if (win) return true;
+
+      //Check Col
+      win = true; //set win to true again to check
+      for (let j = 0; j < BoardSize; j++) {
+        if (board[j][col] !== symbol) {
+          win = false;
+          break;
+        }
+      }
+
+      if (win) return true;
+
+      //Check Diagonal
+      if (row === col) {
+        win = true;
+        for (let k = 0; k < BoardSize; k++) {
+          if (board[k][k] !== symbol) {
+            win = false;
+            break;
+          }
+        }
+        if (win) return true;
+      }
+
+      if (row + col === BoardSize - 1) {
+        win = true;
+        for (let i = 0; i < BoardSize; i++) {
+          if (board[i][BoardSize - 1 - i] !== symbol) {
+            win = false;
+            break;
+          }
+        }
+        if (win) return true;
+      }
+
+      return false;
+    }
+
+    function CheckDraw() {
+      for (let row = 0; row < BoardSize; row++) {
+        for (let col = 0; col < BoardSize; col++) {
+          if (board[row][col] === "") {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    async function fetchMatchHistory() {
+      const response = await fetch("api/match");
+      const matchHistory = await response.json();
+      return matchHistory;
+    }
+
+    async function ReplayMenu() {
+      const MatchHistory = await fetchMatchHistory();
+      const ReplayMenu = document.getElementById("ReplayMenu");
+
+      MatchHistory.forEach((match, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `Match ${index + 1}`;
+        ReplayMenu.appendChild(option);
+      });
+    }
+
+    async function replayMatch(MatchIndex) {
+      const MatchHistory = await fetchMatchHistory();
+      const SelectedMatch = MatchHistory[MatchIndex];
+      const ReplayBoard = document.getElementById("ReplayBoard");
+
+      ReplayBoard.innerHTML = "";
+
+      for (let i = 0; i < SelectedMatch.moves.length; i++) {
+        const move = SelectedMatch.moves[i]
+        const moveDisplay = document.createElement("p");
+        moveDisplay.textContent = `Player ${move.player}: Row ${move.row}, Col ${move.col}`;
+        ReplayBoard.appendChild(moveDisplay);
+
+        const replayCell = ReplayBoard.querySelector(
+          `[data-row="${move.row}"][data-col="${move.col}"]`
+        );
+        replayCell.textContent = move.player;
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  </script>
+</html>
