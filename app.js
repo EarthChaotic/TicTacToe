@@ -1,32 +1,17 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const app = express();
-const PORT = process.env.PORT || 3000;
-
+const express = require('express');
+var app = express();
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const cors = require("cors");
+const config = require('./config/index');
 app.use(bodyParser.json());
-const matchHistory = [];
+app.use(cors());
 
-app.use(express.json());
 
-//Save Match History
-app.post("/api/match", (req, res) => {
-  const matchData = req.body;
-  matchHistory.push(matchData);
-  res.status(201).json({ message: "Match saved successfully" });
-});
+mongoose.connect(config.MONGODB_URI,{useNewUrlParser: true, useUnifiedTopology: true})
 
-//Get match history
-app.get("/api/match", (req, res) => {
-  res.json(matchHistory);
-});
+const matchRoutes = require('./routes/match');
+app.use(matchRoutes);
 
-//Make Match Replay
-app.get('/api/match/:matchId', (req, res) => {
-    const matchId = req.params.matchId;
-    const match = matchHistory[matchId];
-    if (match) {
-      res.json(match);
-    } else {
-      res.status(404).json({ message: 'Match not found' });
-    }
-});
+
+module.exports = app;

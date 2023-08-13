@@ -12,7 +12,6 @@
     <label for="BoardSize">Board Size : </label>
     <input type="number" id="BoardSize" min="3" value="3" />
     <button onclick="Start()">Start Game</button>
-    <br>
     <button onclick="ReplayMenu()">Load Match History</button>
     <select id="ReplayMenu"></select>
     <button onclick="replayMatch(document.getElementById('ReplayMenu').value)">
@@ -32,12 +31,17 @@
     let currentPlayer;
     let BoardSize;
     let gameOver = false;
-    let Matches;
+    let Moves;
+    let isReplayActive = false;
     const boardContainer = document.getElementById("board");
     const boardSizeInput = document.getElementById("BoardSize");
 
     function Start() {
+      if (isReplayActive) {
+        stopReplay();
+      }
       currentPlayer = "X"; //Player X Start
+      Moves = [];
       document.getElementById("PlayerTurn").textContent =
         "Player " + currentPlayer + "'s Turn";
       document.getElementById("WhoWin").textContent = "";
@@ -79,7 +83,8 @@
         board[row][col] = currentPlayer;
         cell.textContent = currentPlayer;
 
-        //Then Check win
+        Moves.push({ player: currentPlayer, row, col });
+
         if (CheckWin(row, col)) {
           document.getElementById("WhoWin").textContent =
             "Player " + currentPlayer + " Win!";
@@ -87,9 +92,9 @@
           const matchData = {
             board: board,
             winner: currentPlayer,
-            moves: Matches,
+            moves: Moves,
           };
-          fetch("api/match", {
+          fetch("http://localhost:3000/match", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -100,6 +105,18 @@
         } else if (CheckDraw()) {
           document.getElementById("WhoWin").textContent = "It's a Draw!";
           gameOver = true;
+          const matchData = {
+            board: board,
+            winner: "Draw",
+            moves: Moves,
+          };
+          fetch("http://localhost:3000/match", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(matchData),
+          });
           return;
         } else {
           currentPlayer = currentPlayer === "X" ? "O" : "X";
@@ -172,7 +189,7 @@
     }
 
     async function fetchMatchHistory() {
-      const response = await fetch("api/match");
+      const response = await fetch("http://localhost:3000/match");
       const matchHistory = await response.json();
       return matchHistory;
     }
@@ -180,33 +197,43 @@
     async function ReplayMenu() {
       const MatchHistory = await fetchMatchHistory();
       const ReplayMenu = document.getElementById("ReplayMenu");
+      ReplayMenu.innerHTML = "";
 
-      MatchHistory.forEach((match, index) => {
+      // Reverse the order of MatchHistory to display in descending order
+      const reversedMatchHistory = MatchHistory.slice().reverse();
+
+      reversedMatchHistory.forEach((match, index) => {
         const option = document.createElement("option");
         option.value = index;
-        option.textContent = `Match ${index + 1}`;
+        option.textContent = `Match ${reversedMatchHistory.length - index}`;
         ReplayMenu.appendChild(option);
       });
     }
 
     async function replayMatch(MatchIndex) {
+      if (isReplayActive) {
+        stopReplay();
+        return;
+      }
+      isReplayActive = true;
+      
       const MatchHistory = await fetchMatchHistory();
       const SelectedMatch = MatchHistory[MatchIndex];
-      const ReplayBoard = document.getElementById("ReplayBoard");
+      const replayMoves = SelectedMatch.moves;
 
-      ReplayBoard.innerHTML = "";
+      Start(); // Reset the game
 
-      for (let i = 0; i < SelectedMatch.moves.length; i++) {
-        const move = SelectedMatch.moves[i]
-        const moveDisplay = document.createElement("p");
-        moveDisplay.textContent = `Player ${move.player}: Row ${move.row}, Col ${move.col}`;
-        ReplayBoard.appendChild(moveDisplay);
-
-        const replayCell = ReplayBoard.querySelector(
-          `[data-row="${move.row}"][data-col="${move.col}"]`
+      for (let i = 0; i < replayMoves.length; i++) {
+        const move = replayMoves[i];
+        const row = move.row;
+        const col = move.col;
+        const replayCell = document.querySelector(
+          `[data-row="${row}"][data-col="${col}"]`
         );
+
         replayCell.textContent = move.player;
 
+        // Delay the replay to make it visually understandable
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
