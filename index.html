@@ -13,6 +13,12 @@
     <input type="number" id="BoardSize" min="3" value="3" />
     <button onclick="Start()">Start Game</button>
     <br><br>
+    <label>Game Mode : </label>
+    <select id="GameMode" name="GameMode">
+      <option value="PVE">Play with Friend</option>
+      <option value="PVP">Play againts AI</option>
+    </select>
+    <br><br>
     <button onclick="ReplayMenu()">Load Match History</button>
     <select id="ReplayMenu"></select>
     <button onclick="replayMatch(document.getElementById('ReplayMenu').value)">

@@ -16,6 +16,8 @@ function Start() {
   gameOver = false;
 
   CreateBoard();
+
+  let gameMode = document
 }
 
 function CreateBoard() {
