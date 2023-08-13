@@ -17,7 +17,6 @@
     <button onclick="replayMatch(document.getElementById('ReplayMenu').value)">
       Replay Match
     </button>
-    <div id="ReplayBoard" class="replay-board"></div>
     <p id="PlayerTurn"></p>
     <!-- Menu -->
 
@@ -32,14 +31,10 @@
     let BoardSize;
     let gameOver = false;
     let Moves;
-    let isReplayActive = false;
     const boardContainer = document.getElementById("board");
     const boardSizeInput = document.getElementById("BoardSize");
 
     function Start() {
-      if (isReplayActive) {
-        stopReplay();
-      }
       currentPlayer = "X"; //Player X Start
       Moves = [];
       document.getElementById("PlayerTurn").textContent =
@@ -211,12 +206,6 @@
     }
 
     async function replayMatch(MatchIndex) {
-      if (isReplayActive) {
-        stopReplay();
-        return;
-      }
-      isReplayActive = true;
-      
       const MatchHistory = await fetchMatchHistory();
       const SelectedMatch = MatchHistory[MatchIndex];
       const replayMoves = SelectedMatch.moves;
