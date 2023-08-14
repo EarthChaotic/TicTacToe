@@ -3,6 +3,7 @@ let BoardSize;
 let gameOver = false;
 let Moves;
 let isReplaying = false;
+let GameMode = document.getElementById("GameMode");
 const boardContainer = document.getElementById("board");
 const boardSizeInput = document.getElementById("BoardSize");
 
@@ -16,12 +17,13 @@ function Start() {
   gameOver = false;
 
   CreateBoard();
-
-  let gameMode = document
 }
 
 function CreateBoard() {
   BoardSize = parseInt(boardSizeInput.value); //Parse Int BoardSize
+  if (BoardSize < 3 || GameMode.value == "PVE") {
+    BoardSize = 3;
+  }
   board = Array.from({ length: BoardSize }, () =>
     Array.from({ length: BoardSize }, () => "")
   );
@@ -32,24 +34,23 @@ function CreateBoard() {
     //Create Row
     for (let col = 0; col < BoardSize; col++) {
       //Create Col in Each Row
-      const cell = document.createElement("div"); //Create new Div
-      cell.className = "cell"; //set all cell classname to cell
-      cell.dataset.row = row; //set row in current index
-      cell.dataset.col = col; //set col in current index
-      cell.addEventListener("click", MakeMove); //add MakeMove event in every Cell
-      cell.textContent = board[row][col]; //For XO to be store in that exact Cell
-      boardContainer.appendChild(cell); //set cell as boardContainer child
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      cell.addEventListener("click", MakeMove);
+      cell.textContent = board[row][col];
+      boardContainer.appendChild(cell);
     }
   }
 }
 
 function MakeMove() {
-  if (gameOver || isReplaying) return;
   const cell = event.target;
   const row = parseInt(cell.dataset.row);
   const col = parseInt(cell.dataset.col);
 
-  if (board[row][col] == "") {
+  if (board[row][col] == "" && !gameOver && !isReplaying) {
     board[row][col] = currentPlayer;
     cell.textContent = currentPlayer;
 
@@ -59,19 +60,13 @@ function MakeMove() {
       document.getElementById("WhoWin").textContent =
         "Player " + currentPlayer + " Win!";
       gameOver = true;
+
       const matchData = {
         board: board,
         winner: currentPlayer,
         moves: Moves,
       };
-      fetch("http://localhost:3000/match", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(matchData),
-      });
-      return;
+      saveMatchData(matchData);
     } else if (CheckDraw()) {
       document.getElementById("WhoWin").textContent = "It's a Draw!";
       gameOver = true;
@@ -80,18 +75,31 @@ function MakeMove() {
         winner: "Draw",
         moves: Moves,
       };
-      fetch("http://localhost:3000/match", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(matchData),
-      });
-      return;
+      saveMatchData(matchData);
     } else {
       currentPlayer = currentPlayer === "X" ? "O" : "X";
       document.getElementById("PlayerTurn").textContent =
         "Player " + currentPlayer + "'s Turn";
+
+      if (
+        GameMode.value === "PVE" &&
+        currentPlayer === "O" &&
+        !gameOver &&
+        !isReplaying
+      ) {
+        // AI's turn
+        const bestMove = findBestMove();
+        airow = bestMove.row;
+        aicol = bestMove.col;
+        board[airow][aicol] = currentPlayer;
+        const cell = document.querySelector(
+          `[data-row="${airow}"][data-col="${aicol}"]`
+        );
+        cell.textContent = currentPlayer;
+        Moves.push({ player: currentPlayer, row: airow, col: aicol });
+
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+      }
     }
   }
 }
@@ -111,7 +119,7 @@ function CheckWin(row, col) {
   if (win) return true;
 
   //Check Col
-  win = true; //set win to true again to check
+  win = true;
   for (let j = 0; j < BoardSize; j++) {
     if (board[j][col] !== symbol) {
       win = false;
@@ -156,6 +164,72 @@ function CheckDraw() {
     }
   }
   return true;
+}
+
+function findBestMove() {
+  let bestScore = -Infinity;
+  let bestMove;
+
+  for (let i = 0; i < BoardSize; i++) {
+    for (let j = 0; j < BoardSize; j++) {
+      if (board[i][j] == "") {
+        board[i][j] = "O";
+        const score = minimax(board, 0, false, i, j);
+        board[i][j] = "";
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = { row: i, col: j };
+        }
+      }
+    }
+  }
+
+  return bestMove;
+}
+
+function minimax(board, depth, isMaximizing, row, col) {
+  let scores = {
+    X: -1,
+    O: 1,
+    Draw: 0,
+  };
+
+  if (CheckWin(row, col)) {
+    return scores[currentPlayer];
+  }
+
+  if (CheckDraw()) {
+    return scores["Draw"];
+  }
+
+  if (isMaximizing) {
+    let bestScore = -Infinity;
+    for (let i = 0; i < BoardSize; i++) {
+      for (let j = 0; j < BoardSize; j++) {
+        if (board[i][j] === "") {
+          board[i][j] = "O";
+          const score = minimax(board, depth + 1, false, i, j);
+          board[i][j] = "";
+          bestScore = Math.max(score, bestScore);
+        }
+      }
+    }
+    return bestScore;
+  } else {
+    let bestScore = Infinity;
+    for (let i = 0; i < BoardSize; i++) {
+      for (let j = 0; j < BoardSize; j++) {
+        if (board[i][j] === "") {
+          board[i][j] = "X";
+          const score = minimax(board, depth + 1, true, i, j);
+          board[i][j] = "";
+          bestScore = Math.min(score, bestScore);
+        }
+      }
+    }
+    return bestScore;
+  }
 }
 
 async function fetchMatchHistory() {
@@ -214,4 +288,14 @@ async function replayMatch(MatchIndex) {
   }
 
   isReplaying = false;
+}
+
+async function saveMatchData(matchData) {
+  const response = await fetch("http://localhost:3000/match", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(matchData),
+  });
 }

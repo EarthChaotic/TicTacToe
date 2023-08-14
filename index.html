@@ -14,9 +14,9 @@
     <button onclick="Start()">Start Game</button>
     <br><br>
     <label>Game Mode : </label>
-    <select id="GameMode" name="GameMode">
-      <option value="PVE">Play with Friend</option>
-      <option value="PVP">Play againts AI</option>
+    <select onchange="Start()" id="GameMode" name="GameMode">
+      <option value="PVP">Play with Friend</option>
+      <option value="PVE">Play againts AI</option>
     </select>
     <br><br>
     <button onclick="ReplayMenu()">Load Match History</button>
