@@ -3,9 +3,11 @@ let BoardSize;
 let gameOver = false;
 let Moves;
 let isReplaying = false;
+let aiPlayer = "O";
+let isAITurn = false;
 let GameMode = document.getElementById("GameMode");
-const boardContainer = document.getElementById("board");
-const boardSizeInput = document.getElementById("BoardSize");
+let boardContainer = document.getElementById("board");
+let boardSizeInput = document.getElementById("BoardSize");
 
 function Start() {
   isReplaying = false;
@@ -49,18 +51,90 @@ function MakeMove() {
   const cell = event.target;
   const row = parseInt(cell.dataset.row);
   const col = parseInt(cell.dataset.col);
+  if(isAITurn){
+    return
+  }
 
-  if (board[row][col] == "" && !gameOver && !isReplaying) {
-    board[row][col] = currentPlayer;
-    cell.textContent = currentPlayer;
+  if (board[row][col] == "" && !gameOver && !isReplaying ) {
+    if (GameMode.value === "PVP" || currentPlayer !== aiPlayer) {
+      board[row][col] = currentPlayer;
+      cell.textContent = currentPlayer;
 
-    Moves.push({ player: currentPlayer, row, col });
+      Moves.push({ player: currentPlayer, row, col });
 
-    if (CheckWin(row, col)) {
+      if (CheckWin()) {
+        document.getElementById("WhoWin").textContent =
+          "Player " + currentPlayer + " Win!";
+        gameOver = true;
+
+        const matchData = {
+          board: board,
+          winner: currentPlayer,
+          moves: Moves,
+        };
+        saveMatchData(matchData);
+      } else if (CheckDraw()) {
+        document.getElementById("WhoWin").textContent = "It's a Draw!";
+        gameOver = true;
+        const matchData = {
+          board: board,
+          winner: "Draw",
+          moves: Moves,
+        };
+        saveMatchData(matchData);
+      } else {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        document.getElementById("PlayerTurn").textContent =
+          "Player " + currentPlayer + "'s Turn";
+      }
+    }
+
+    if (GameMode.value === "PVE" && currentPlayer === "O") {
+      PVE();
+    }
+  }
+}
+
+function BestMove() {
+  let bestScore = -Infinity;
+  let bestMove;
+  if (!gameOver) {
+    for (let row = 0; row < BoardSize; row++) {
+      for (let col = 0; col < BoardSize; col++) {
+        if (board[row][col] === "") {
+          board[row][col] = currentPlayer;
+          const score = minimax(board, 0, false);
+          board[row][col] = "";
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = { row, col };
+          }
+        }
+      }
+    }
+  }
+  return bestMove;
+}
+
+function PVE() {
+  isAITurn = true;
+
+  setTimeout(() => {
+    let bestMove = BestMove();
+
+    const aiCell = document.querySelector(
+      `[data-row="${bestMove.row}"][data-col="${bestMove.col}"]`
+    );
+
+    board[bestMove.row][bestMove.col] = aiPlayer;
+    aiCell.textContent = aiPlayer;
+
+    Moves.push({ player: aiPlayer, row: bestMove.row, col: bestMove.col });
+
+    if (CheckWin()) {
       document.getElementById("WhoWin").textContent =
-        "Player " + currentPlayer + " Win!";
+        "Player " + aiPlayer + " Win!";
       gameOver = true;
-
       const matchData = {
         board: board,
         winner: currentPlayer,
@@ -77,140 +151,37 @@ function MakeMove() {
       };
       saveMatchData(matchData);
     } else {
-      currentPlayer = currentPlayer === "X" ? "O" : "X";
+      currentPlayer = "X";
       document.getElementById("PlayerTurn").textContent =
         "Player " + currentPlayer + "'s Turn";
-
-      if (
-        GameMode.value === "PVE" &&
-        currentPlayer === "O" &&
-        !gameOver &&
-        !isReplaying
-      ) {
-        // AI's turn
-        const bestMove = findBestMove();
-        airow = bestMove.row;
-        aicol = bestMove.col;
-        board[airow][aicol] = currentPlayer;
-        const cell = document.querySelector(
-          `[data-row="${airow}"][data-col="${aicol}"]`
-        );
-        cell.textContent = currentPlayer;
-        Moves.push({ player: currentPlayer, row: airow, col: aicol });
-
-        currentPlayer = currentPlayer === "X" ? "O" : "X";
-      }
     }
-  }
+    isAITurn = false;
+  }, 700);
 }
 
-function CheckWin(row, col) {
-  const symbol = board[row][col];
-  let win = true;
-
-  //Check row
-  for (let i = 0; i < BoardSize; i++) {
-    if (board[row][i] !== symbol) {
-      win = false;
-      break;
-    }
-  }
-
-  if (win) return true;
-
-  //Check Col
-  win = true;
-  for (let j = 0; j < BoardSize; j++) {
-    if (board[j][col] !== symbol) {
-      win = false;
-      break;
-    }
-  }
-
-  if (win) return true;
-
-  //Check Diagonal
-  if (row === col) {
-    win = true;
-    for (let k = 0; k < BoardSize; k++) {
-      if (board[k][k] !== symbol) {
-        win = false;
-        break;
-      }
-    }
-    if (win) return true;
-  }
-
-  if (row + col === BoardSize - 1) {
-    win = true;
-    for (let i = 0; i < BoardSize; i++) {
-      if (board[i][BoardSize - 1 - i] !== symbol) {
-        win = false;
-        break;
-      }
-    }
-    if (win) return true;
-  }
-
-  return false;
-}
-
-function CheckDraw() {
-  for (let row = 0; row < BoardSize; row++) {
-    for (let col = 0; col < BoardSize; col++) {
-      if (board[row][col] === "") {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-function findBestMove() {
-  let bestScore = -Infinity;
-  let bestMove;
-
-  for (let i = 0; i < BoardSize; i++) {
-    for (let j = 0; j < BoardSize; j++) {
-      if (board[i][j] == "") {
-        board[i][j] = "O";
-        const score = minimax(board, 0, false, i, j);
-        board[i][j] = "";
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = { row: i, col: j };
-        }
-      }
-    }
-  }
-
-  return bestMove;
-}
-
-function minimax(board, depth, isMaximizing, row, col) {
-  let scores = {
+function minimax(board, depth, isMaximizing) {
+  const scores = {
     X: -1,
     O: 1,
     Draw: 0,
   };
 
-  if (CheckWin(row, col)) {
+  if (CheckWin()) {
     return scores[currentPlayer];
   }
 
   if (CheckDraw()) {
-    return scores["Draw"];
+    return scores.Draw;
   }
 
   if (isMaximizing) {
     let bestScore = -Infinity;
-    for (let i = 0; i < BoardSize; i++) {
-      for (let j = 0; j < BoardSize; j++) {
-        if (board[i][j] === "") {
-          board[i][j] = "O";
-          const score = minimax(board, depth + 1, false, i, j);
-          board[i][j] = "";
+    for (let row = 0; row < BoardSize; row++) {
+      for (let col = 0; col < BoardSize; col++) {
+        if (board[row][col] === "") {
+          board[row][col] = aiPlayer;
+          const score = minimax(board, depth + 1, false);
+          board[row][col] = "";
           bestScore = Math.max(score, bestScore);
         }
       }
@@ -218,18 +189,66 @@ function minimax(board, depth, isMaximizing, row, col) {
     return bestScore;
   } else {
     let bestScore = Infinity;
-    for (let i = 0; i < BoardSize; i++) {
-      for (let j = 0; j < BoardSize; j++) {
-        if (board[i][j] === "") {
-          board[i][j] = "X";
-          const score = minimax(board, depth + 1, true, i, j);
-          board[i][j] = "";
+    for (let row = 0; row < BoardSize; row++) {
+      for (let col = 0; col < BoardSize; col++) {
+        if (board[row][col] === "") {
+          board[row][col] = "X";
+          const score = minimax(board, depth + 1, true);
+          board[row][col] = "";
           bestScore = Math.min(score, bestScore);
         }
       }
     }
     return bestScore;
   }
+}
+
+function CheckWin() {
+  //Check Col and Row Win
+  for (let i = 0; i < BoardSize; i++) {
+    let RowWin = true;
+    let ColWin = true;
+    for (let j = 0; j < BoardSize; j++) {
+      if (board[i][j] !== currentPlayer) {
+        RowWin = false;
+      }
+      if (board[j][i] !== currentPlayer) {
+        ColWin = false;
+      }
+    }
+    if (RowWin || ColWin) {
+      return true;
+    }
+  }
+
+  // Check Diagonal wins
+  let diag1Win = true;
+  let diag2Win = true;
+
+  for (let i = 0; i < BoardSize; i++) {
+    if (board[i][i] !== currentPlayer) {
+      diag1Win = false;
+    }
+    if (board[i][BoardSize - 1 - i] !== currentPlayer) {
+      diag2Win = false;
+    }
+  }
+  if (diag1Win || diag2Win) {
+    return true;
+  }
+
+  return false;
+}
+
+function CheckDraw() {
+  for (let i = 0; i < BoardSize; i++) {
+    for (let j = 0; j < BoardSize; j++) {
+      if (board[i][j] === "") {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 async function fetchMatchHistory() {
