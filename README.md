@@ -5,11 +5,14 @@
 -ทำการติดตั้ง Node.js ไว้ในเครื่อง(หากยังไม่เคยติดตั้ง) **https://nodejs.org/en**
 
 # วิธี Run โปรแกรม
-เปิดโฟลเดอร์โปรเจคด้วยตัวโปรแกรม Code Editor ที่มี Terminal (แนะนำโปรแกรม Visual Studio Code)
 
-ไปที่ไฟล์ app.js และเปิดหน้า Terminal และพิมพ์ npm run dev ในตัว Terminal เพื่อทำการรันตัว API ของฐานข้อมูล
+1.เปิดโฟลเดอร์โปรเจคด้วยตัวโปรแกรม Code Editor ที่มี Terminal (แนะนำโปรแกรม Visual Studio Code)
 
-สามารถเปิดไฟล์ index.html เพื่อเล่นเกมได้เลย
+2.ไปที่ไฟล์ app.js และเปิดหน้า Terminal และพิมพ์ npm run dev ในตัว Terminal เพื่อทำการรันตัว API ของฐานข้อมูล
+
+3.สามารถเปิดไฟล์ index.html เพื่อเล่นเกมได้เลย
+
+**เนื่องจากตัวเว็ปใช้ API ที่รันจาก local host หากไม่ได้ทำใน Step ที่ 2 จะทำให้ไม่สามารถเข้าถึงตัว Feature MatchReplay หรือ　Load MatchHistory ได้*
 
 # การออกแบบโปรแกรม
 
